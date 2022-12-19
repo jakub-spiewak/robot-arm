@@ -21,6 +21,7 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation("org.jetbrains.bio:viktor:1.2.0")
+    implementation("ch.obermuhlner:big-math:2.3.2")
 }
 
 tasks.withType<KotlinCompile> {

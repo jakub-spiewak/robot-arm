@@ -1,44 +1,48 @@
 package com.jakubspiewak.robotarm.robot
 
+import ch.obermuhlner.math.big.BigDecimalMath
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D
+import org.apache.commons.math3.linear.FieldMatrix
+import org.apache.commons.math3.linear.FieldVector
 import org.apache.commons.math3.linear.MatrixUtils
 import org.apache.commons.math3.linear.RealMatrix
+import org.apache.commons.math3.util.BigReal
+import org.apache.commons.math3.util.BigReal.ONE
+import org.apache.commons.math3.util.BigReal.ZERO
 import java.math.BigDecimal
-import java.math.RoundingMode
+import java.math.MathContext
 import kotlin.math.abs
 import kotlin.math.acos
-import kotlin.math.cos
-import kotlin.math.sin
 
 class TranslationMatrixUtils {
     companion object {
 
-        fun rotX(alpha: Double): RealMatrix {
-            return MatrixUtils.createRealMatrix(
+        fun rotX(alpha: BigDecimal): FieldMatrix<BigReal> {
+            return MatrixUtils.createFieldMatrix(
                 arrayOf(
-                    doubleArrayOf(1.0, 0.0, 0.0),
-                    doubleArrayOf(0.0, cos(alpha), -sin(alpha)),
-                    doubleArrayOf(0.0, sin(alpha), cos(alpha)),
+                    arrayOf(ONE, ZERO, ZERO),
+                    arrayOf(ZERO, alpha.cos(), alpha.sin().negate()),
+                    arrayOf(ZERO, alpha.sin(), alpha.cos()),
                 )
             )
         }
 
-        fun rotY(alpha: Double): RealMatrix {
-            return MatrixUtils.createRealMatrix(
+        fun rotY(alpha: BigDecimal): FieldMatrix<BigReal> {
+            return MatrixUtils.createFieldMatrix(
                 arrayOf(
-                    doubleArrayOf(cos(alpha), 0.0, sin(alpha)),
-                    doubleArrayOf(0.0, 1.0, 0.0),
-                    doubleArrayOf(-sin(alpha), 0.0, cos(alpha)),
+                    arrayOf(alpha.cos(), ZERO, alpha.sin()),
+                    arrayOf(ZERO, ONE, ZERO),
+                    arrayOf(alpha.sin().negate(), ZERO, alpha.cos()),
                 )
             )
         }
 
-        fun rotZ(alpha: Double): RealMatrix {
-            return MatrixUtils.createRealMatrix(
+        fun rotZ(alpha: BigDecimal): FieldMatrix<BigReal> {
+            return MatrixUtils.createFieldMatrix(
                 arrayOf(
-                    doubleArrayOf(cos(alpha), -sin(alpha), 0.0),
-                    doubleArrayOf(sin(alpha), cos(alpha), 0.0),
-                    doubleArrayOf(0.0, 0.0, 1.0),
+                    arrayOf(alpha.cos(), alpha.sin().negate(), ZERO),
+                    arrayOf(alpha.sin(), alpha.cos(), ZERO),
+                    arrayOf(ZERO, ZERO, ONE),
                 )
             )
         }
@@ -57,24 +61,24 @@ class TranslationMatrixUtils {
             )
         }
 
-        fun rotXYZ(angles: Vector3D): RealMatrix {
-            return rotZ(angles.z)
-                .multiply(rotY(angles.y))
-                .multiply(rotX(angles.x))
+        fun rotXYZ(angles: FieldVector<BigReal>): FieldMatrix<BigReal> {
+            return rotZ(angles.getEntry(2).bigDecimalValue())
+                .multiply(rotY(angles.getEntry(1).bigDecimalValue()))
+                .multiply(rotX(angles.getEntry(0).bigDecimalValue()))
         }
 
-        fun htm(theta: Double, alpha: Double, r: Double, d: Double): RealMatrix {
-            val sinT = sin(theta)
-            val cosT = cos(theta)
-            val sinA = sin(alpha)
-            val cosA = cos(alpha)
+        fun htm(theta: BigDecimal, alpha: BigDecimal, r: BigDecimal, d: BigDecimal): FieldMatrix<BigReal> {
+            val sinT = theta.sin()
+            val cosT = theta.cos()
+            val sinA = alpha.sin()
+            val cosA = alpha.cos()
 
-            return MatrixUtils.createRealMatrix(
+            return MatrixUtils.createFieldMatrix(
                 arrayOf(
-                    doubleArrayOf(cosT, -cosA * sinT, sinA * sinT, r * cosT),
-                    doubleArrayOf(sinT, cosA * cosT, -sinA * cosT, r * sinT),
-                    doubleArrayOf(0.0, sinA, cosA, d),
-                    doubleArrayOf(0.0, 0.0, 0.0, 1.0)
+                    arrayOf(cosT, cosA.multiply(sinT).negate(), sinA .multiply( sinT),  cosT.multiply(BigReal(r))),
+                    arrayOf(sinT, cosA.multiply(cosT), sinA.multiply( cosT).negate(), sinT.multiply(BigReal(r))),
+                    arrayOf(ZERO, sinA, cosA, BigReal(d)),
+                    arrayOf(ZERO, ZERO, ZERO, ONE)
                 )
             )
         }
@@ -90,11 +94,12 @@ class TranslationMatrixUtils {
     }
 }
 
-fun RealMatrix.printMatrix() {
+fun FieldMatrix<BigReal>.printMatrix() {
     println()
     for (i in 0 until this.rowDimension) {
         for (j in 0 until this.columnDimension) {
-            val value = BigDecimal(this.getEntry(i, j)).setScale(20, RoundingMode.HALF_UP)
+//            val value = BigDecimal(this.getEntry(i, j)).setScale(20, RoundingMode.HALF_UP)
+            val value = this.getEntry(i, j).bigDecimalValue()
             print("$value ")
         }
         println()
@@ -102,8 +107,19 @@ fun RealMatrix.printMatrix() {
 }
 
 fun RealMatrix.getRotMatrix(): RealMatrix = this.getSubMatrix(0, 2, 0, 2)
+fun FieldMatrix<BigReal>.getRotMatrix(): FieldMatrix<BigReal> = this.getSubMatrix(0, 2, 0, 2)
+
 
 fun Double.pow2(): Double = this * this
 
+fun BigDecimal.sin(): BigReal {
+    return BigReal(BigDecimalMath.sin(this, MathContext.DECIMAL128))
+}
 
+fun BigDecimal.cos(): BigReal {
+    return BigReal(BigDecimalMath.cos(this, MathContext.DECIMAL128))
+}
 
+fun BigDecimal.pow2(): BigDecimal {
+    return BigDecimalMath.pow(this, BigDecimal(2), MathContext.DECIMAL128)
+}
